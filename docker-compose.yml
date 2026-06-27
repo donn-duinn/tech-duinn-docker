@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: techduinn
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - tech-duinn
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - tech-duinn
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379"
+
+  searxng:
+    image: searxng/searxng:2026.5.31-7159b8aed
+    container_name: searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET}
+      SEARXNG_BIND_ADDRESS: "0.0.0.0"
+    volumes:
+      - searxng-data:/etc/searxng
+      - ./searxng-limiter.toml:/etc/searxng/limiter.toml:ro
+    networks:
+      - tech-duinn
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "8080:8080"
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
+      WEBSOCKET_ENABLED: "true"
+      SIGNUPS_ALLOWED: "false"
+    volumes:
+      - vaultwarden-data:/data
+    networks:
+      - tech-duinn
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "8091:80"
+
+volumes:
+  pg-data:
+  redis-data:
+  searxng-data:
+  vaultwarden-data:
+
+networks:
+  tech-duinn:
+    driver: bridge
