@@ -73,7 +73,7 @@ services:
       timeout: 10s
       retries: 3
     ports:
-      - "8091:80"
+      - "8093:80"
 
 volumes:
   pg-data:
